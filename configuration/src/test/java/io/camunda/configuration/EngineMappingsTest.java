@@ -27,6 +27,7 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 @TestPropertySource(
     properties = {
       "camunda.processing.engine.mappings.input-mode=COMBINED",
+      "camunda.processing.engine.mappings.input-comparison-mode=ORDERED",
     })
 public class EngineMappingsTest {
   final BrokerBasedProperties brokerCfg;
@@ -39,5 +40,11 @@ public class EngineMappingsTest {
   void shouldSetInputMode() {
     assertThat(brokerCfg.getExperimental().getEngine().getInputMappingMode())
         .isEqualTo(EngineConfiguration.InputMappingMode.COMBINED);
+  }
+
+  @Test
+  void shouldSetInputComparisonMode() {
+    assertThat(brokerCfg.getExperimental().getEngine().getInputComparisonMode())
+        .isEqualTo(EngineConfiguration.InputMappingMode.ORDERED);
   }
 }

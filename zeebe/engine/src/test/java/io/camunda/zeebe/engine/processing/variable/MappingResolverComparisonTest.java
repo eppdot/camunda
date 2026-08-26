@@ -455,24 +455,29 @@ class MappingResolverComparisonTest {
 
   @Nested
   @DisplayName(
-      "Rule 8: types survive across input mappings, but not across variables (confirmed bug"
-          + " camunda/camunda#60011 -- these assert today's actual behavior, which loses the type"
-          + " at every mapping boundary instead of only at the variable-write boundary)")
+      "Rule 8: types survive across input mappings within one resolver context, but not when"
+          + " written through MsgPack (confirmed bug camunda/camunda#60011). OrderedMappingResolver"
+          + " is the broken party here: it loses the FEEL type at every mapping boundary via the"
+          + " MsgPack round-trip. CombinedMappingResolver evaluates all mappings in one FEEL"
+          + " context expression, so the type survives. When input-comparison-mode=ORDERED is used"
+          + " with the COMBINED default, any mapping that reads a FEEL-typed value set by an"
+          + " earlier mapping WILL trigger comparison warnings -- that is expected and correct."
+          + " These tests will need updating once #60011 is fixed.")
   class Rule8TypesSurviveAcrossMappingsNotVariables {
 
     @Test
-    @DisplayName("8.1 across input mappings, back-referencing a duration -- diverges from 8.9.0")
-    void shouldLoseTheFeelTypeAcrossMappingsToday() {
-      // given
+    @DisplayName(
+        "8.1 OrderedMappingResolver loses the FEEL type at the mapping boundary (bug #60011);"
+            + " CombinedMappingResolver preserves it within the single FEEL context")
+    void shouldLoseTheFeelTypeAcrossMappingsInOrderedButNotInCombined() {
       final var mappings =
           List.of(Helpers.mapping("=duration(\"P1DT2H\")", "x"), Helpers.mapping("=x.days", "y"));
 
-      // when
       final var results = Helpers.resolve(mappings, Map.of());
 
-      // then: 8.9.0's single combined FEEL context let mapping 2 read mapping 1's result as a
-      // live FEEL duration; today's per-mapping round-trip through MsgPack loses the type, so
-      // x.days resolves against a plain string
+      // ORDERED: x is stored as MsgPack string after mapping 1; x.days in mapping 2 sees a
+      // plain string, not a duration → y=null. COMBINED: x stays a live FEEL duration inside
+      // the single context expression → x.days=1.
       Helpers.assertDiffers(results, "{'x':'P1DT2H','y':null}", "{'x':'P1DT2H','y':1}");
     }
 
